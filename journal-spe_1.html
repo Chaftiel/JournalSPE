@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Journal SPÉ">
+  <title>Journal S·P·É</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body { background: #f5f0eb; font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif; color: #1a1a2e; overscroll-behavior: none; }
+
+    header { background: #1a1a2e; color: #f5f0eb; padding: 24px 20px 0; position: sticky; top: 0; z-index: 100; }
+    header h1 { font-family: 'Lora', Georgia, serif; font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+    header p  { font-size: 10px; color: #6a6a8a; margin-top: 3px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .tabs { display: flex; margin-top: 16px; }
+    .tab { flex: 1; padding: 11px 0; border: none; border-radius: 8px 8px 0 0; font-family: inherit; font-size: 14px; cursor: pointer; background: transparent; color: #6a6a8a; font-weight: 400; touch-action: manipulation; }
+    .tab.active { background: #f5f0eb; color: #1a1a2e; font-weight: 700; }
+
+    main { padding: 18px 14px; max-width: 580px; margin: 0 auto; }
+
+    .card { background: #fff; border-radius: 14px; padding: 18px; margin-bottom: 12px; box-shadow: 0 1px 5px rgba(0,0,0,0.07); }
+    .field { margin-bottom: 20px; }
+    .field label { display: block; font-size: 10px; font-weight: 700; color: #a09898; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+    .field textarea, .field input[type="datetime-local"] { width: 100%; border: 1.5px solid #e5e0da; border-radius: 8px; padding: 11px 13px; font-size: 15px; font-family: inherit; background: #faf7f4; color: #1a1a2e; outline: none; resize: vertical; -webkit-appearance: none; }
+    .field textarea:focus, .field input[type="datetime-local"]:focus { border-color: #1a1a2e; }
+
+    .int-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+    .int-row input[type="range"] { flex: 1; }
+    .int-num { font-family: 'Lora', Georgia, serif; font-size: 22px; font-weight: 700; min-width: 28px; text-align: center; }
+    .hint { font-size: 11px; color: #b0ada8; white-space: nowrap; }
+
+    .sel-badge { text-align: center; margin-top: 10px; margin-bottom: 4px; }
+    .sel-badge span { display: inline-block; padding: 5px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+
+    .btn-submit { width: 100%; padding: 14px; background: #1a1a2e; color: #f5f0eb; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 8px; touch-action: manipulation; }
+    .btn-submit:disabled { opacity: 0.35; cursor: default; }
+    .btn-action { flex: 1; padding: 10px; border-radius: 8px; border: 1.5px solid #e5e0da; background: #fff; color: #1a1a2e; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; touch-action: manipulation; }
+    .btn-del { margin-top: 12px; background: none; border: 1px solid #f0cece; color: #c0392b; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .btn-yes { background: #c0392b; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .btn-no  { background: none; border: 1px solid #e0ddd8; color: #6a6a6a; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+
+    .list-actions { display: flex; gap: 8px; margin-bottom: 16px; }
+    .entry { background: #fff; border-radius: 14px; padding: 18px; margin-bottom: 12px; box-shadow: 0 1px 5px rgba(0,0,0,0.07); cursor: pointer; border-left: 4px solid transparent; }
+    .entry.open { box-shadow: 0 4px 18px rgba(0,0,0,0.1); }
+    .ev-date  { font-size: 13px; font-weight: 600; color: #4a4a6a; margin-bottom: 2px; }
+    .rec-date { font-size: 12px; color: #b8b4ae; margin-bottom: 8px; }
+    .entry-row { display: flex; gap: 10px; align-items: flex-start; }
+    .situation { font-family: 'Lora', Georgia, serif; font-size: 16px; color: #1a1a2e; line-height: 1.5; flex: 1; }
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; flex-shrink: 0; }
+    .expanded-sec { margin-top: 14px; padding-top: 14px; border-top: 1px solid #f0ede8; }
+    .sec-label { font-size: 10px; font-weight: 700; color: #c8c0b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+    .sec-text  { font-size: 15px; color: #3a3a3a; line-height: 1.5; }
+    .int-bar-bg   { height: 6px; border-radius: 3px; width: 140px; background: #f0ede8; overflow: hidden; display: inline-block; vertical-align: middle; }
+    .int-bar-fill { height: 100%; border-radius: 3px; }
+    .confirm-box  { margin-top: 10px; padding: 10px 12px; background: #fff5f5; border-radius: 8px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+    .confirm-box span { flex: 1; }
+    .empty { text-align: center; padding: 60px 20px; color: #b0ada8; }
+    .empty-icon { font-size: 38px; opacity: 0.35; margin-bottom: 14px; }
+    .empty h2 { font-family: 'Lora', Georgia, serif; font-size: 17px; margin-bottom: 8px; }
+
+
+    /* ── Vertical emotion picker ── */
+    .emo-picker { display: flex; flex-direction: column; gap: 6px; }
+    .emo-primary {
+      border-radius: 10px; overflow: hidden;
+      border: 2px solid transparent; transition: border-color 0.15s;
+    }
+    .emo-primary.open { border-color: var(--ec); }
+    .emo-primary-btn {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px; border: none; cursor: pointer;
+      font-family: inherit; font-size: 15px; font-weight: 700;
+      background: var(--ec); color: #fff; text-align: left;
+      touch-action: manipulation;
+    }
+    .emo-primary-btn .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.5); flex-shrink: 0; }
+    .emo-primary-btn .arrow { margin-left: auto; font-size: 11px; opacity: 0.7; transition: transform 0.2s; }
+    .emo-primary.open .arrow { transform: rotate(180deg); }
+    .emo-subs { display: none; background: #faf7f4; padding: 8px; flex-direction: column; gap: 6px; }
+    .emo-primary.open .emo-subs { display: flex; }
+    .emo-sub { border-radius: 8px; overflow: hidden; }
+    .emo-sub-btn {
+      width: 100%; display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px; border: none; cursor: pointer;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      background: rgba(0,0,0,0.06); color: #1a1a2e; text-align: left;
+      border-radius: 8px; touch-action: manipulation;
+    }
+    .emo-sub-btn.selected, .emo-sub.open .emo-sub-btn { background: var(--ec); color: #fff; border-radius: 8px 8px 0 0; }
+    .emo-items { display: none; flex-wrap: wrap; gap: 6px; padding: 8px 10px 10px; background: #fff; border-radius: 0 0 8px 8px; border: 1.5px solid var(--ec); border-top: none; }
+    .emo-sub.open .emo-items { display: flex; }
+    .emo-item {
+      padding: 6px 12px; border-radius: 16px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--ec); color: var(--ec); background: transparent;
+      cursor: pointer; font-family: inherit; touch-action: manipulation;
+    }
+    .emo-item.selected { background: var(--ec); color: #fff; }
+    .mode-toggle { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+    .mode-toggle button {
+      background: none; border: 1.5px solid #e0ddd8; border-radius: 20px;
+      padding: 5px 13px; font-size: 12px; font-weight: 600; color: #6a6a8a;
+      cursor: pointer; font-family: inherit; touch-action: manipulation;
+    }
+    .mode-toggle button:hover { border-color: #1a1a2e; color: #1a1a2e; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Journal S · P · É</h1>
+  <p>Situation · Pensée · Émotion</p>
+  <div class="tabs">
+    <button class="tab active" id="tab-list" onclick="go('list')">Entrées</button>
+    <button class="tab"        id="tab-form" onclick="go('form')">+ Nouvelle</button>
+  </div>
+</header>
+
+<main id="app"></main>
+<input type="file" id="json-import" accept=".json" style="display:none" onchange="importJSON(this)">
+
+<script>
+// ═══════════════════════════════════════════════
+// DONNÉES ÉMOTIONNELLES  (6 primaires × N secondaires × 3 tertiaires)
+// ═══════════════════════════════════════════════
+// Contenu basé sur la roue de Plutchik (1980) — domaine public
+// Nuances secondaires et tertiaires : vocabulaire psychologique général
+const EMOTIONS = [
+  { name:'Joie',         color:'#F9C74F', tp:'#5a3e00', subs:[
+    { name:'Sérénité',    items:['Calme','Apaisé','Tranquille']         },
+    { name:'Bonheur',     items:['Content','Satisfait','Heureux']       },
+    { name:'Extase',      items:['Euphorique','Exalté','Rayonnant']     },
+  ]},
+  { name:'Confiance',    color:'#90BE6D', tp:'#1a3300', subs:[
+    { name:'Acceptation', items:['Ouvert','Tolérant','Réceptif']        },
+    { name:'Assurance',   items:['Confiant','Sécurisé','Stable']        },
+    { name:'Admiration',  items:['Respectueux','Reconnaissant','Fier']  },
+  ]},
+  { name:'Peur',         color:'#577590', tp:'#fff',   subs:[
+    { name:'Appréhension',items:['Inquiet','Hésitant','Préoccupé']      },
+    { name:'Anxiété',     items:['Nerveux','Tendu','Craintif']          },
+    { name:'Terreur',     items:['Terrifié','Panique','Apeuré']         },
+  ]},
+  { name:'Surprise',     color:'#4CC9F0', tp:'#003040', subs:[
+    { name:'Distraction', items:['Inattentif','Déconcerté','Perdu']     },
+    { name:'Étonnement',  items:['Stupéfait','Interloqué','Abasourdi']  },
+    { name:'Stupéfaction',items:['Sidéré','Ébahi','Choqué']             },
+  ]},
+  { name:'Tristesse',    color:'#6A7FDB', tp:'#fff',   subs:[
+    { name:'Mélancolie',  items:['Nostalgique','Rêveur','Pensif']       },
+    { name:'Chagrin',     items:['Peiné','Attristé','Désolé']           },
+    { name:'Désespoir',   items:['Abattu','Accablé','Inconsolable']     },
+  ]},
+  { name:'Dégoût',       color:'#9B5DE5', tp:'#fff',   subs:[
+    { name:'Ennui',       items:['Lassé','Indifférent','Blasé']         },
+    { name:'Aversion',    items:['Répugné','Rebuté','Dédaigneux']       },
+    { name:'Hostilité',   items:['Révolté','Méprisants','Écœuré']       },
+  ]},
+  { name:'Colère',       color:'#F94144', tp:'#fff',   subs:[
+    { name:'Agacement',   items:['Irrité','Contrarié','Impatient']      },
+    { name:'Colère vive', items:['Furieux','Indigné','Exaspéré']        },
+    { name:'Rage',        items:['Enragé','Déchaîné','Hors de soi']     },
+  ]},
+  { name:'Anticipation', color:'#F3722C', tp:'#fff',   subs:[
+    { name:'Intérêt',     items:['Curieux','Attentif','Éveillé']        },
+    { name:'Désir',       items:['Impatient','Enthousiaste','Motivé']   },
+    { name:'Vigilance',   items:['Alerte','Concentré','Déterminé']      },
+  ]},
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, pickerMode:'vertical' };
+
+// ═══════════════════════════════════════════════
+// SVG WHEEL BUILDER
+// ═══════════════════════════════════════════════
+(function(){
+const CX=300,CY=300,R=[64,130,212,295];
+function rad(a){return(a-90)*Math.PI/180;}
+function px(r,a){return CX+r*Math.cos(rad(a));}
+function py(r,a){return CY+r*Math.sin(rad(a));}
+function apath(a1,a2,r1,r2){
+  const lg=(a2-a1)>180?1:0;
+  return `M${px(r1,a1).toFixed(1)},${py(r1,a1).toFixed(1)} L${px(r2,a1).toFixed(1)},${py(r2,a1).toFixed(1)} A${r2},${r2} 0 ${lg} 1 ${px(r2,a2).toFixed(1)},${py(r2,a2).toFixed(1)} L${px(r1,a2).toFixed(1)},${py(r1,a2).toFixed(1)} A${r1},${r1} 0 ${lg} 0 ${px(r1,a1).toFixed(1)},${py(r1,a1).toFixed(1)}Z`;
+}
+function lt(hex,t){
+  const n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  return `rgb(${Math.round(r+(255-r)*t)},${Math.round(g+(255-g)*t)},${Math.round(b+(255-b)*t)})`;
+}
+// Rotation: flip text on left half so it's always readable
+function srot(mid){
+  let r=((mid-90)%360+360)%360;
+  if(r>90&&r<270)r=(r+180)%360;
+  if(r>180)r-=360;
+  return r;
+}
+function tlabel(mid,r,fs,fw,fill,txt){
+  const x=px(r,mid).toFixed(1),y=py(r,mid).toFixed(1),ro=srot(mid).toFixed(1);
+  return `<text transform="rotate(${ro},${x},${y})" x="${x}" y="${y}" dy="0.35em" text-anchor="middle" font-size="${fs}" font-weight="${fw}" fill="${fill}" font-family="sans-serif" pointer-events="none">${txt}</text>`;
+}
+function tlabel2(mid,r,fs,fw,fill,l1,l2){
+  const x=px(r,mid),yc=py(r,mid),ro=srot(mid).toFixed(1);
+  const y1=(yc-fs*0.6).toFixed(1),y2=(yc+fs*0.6).toFixed(1);
+  return `<text transform="rotate(${ro},${x.toFixed(1)},${yc.toFixed(1)})" text-anchor="middle" font-size="${fs}" font-weight="${fw}" fill="${fill}" font-family="sans-serif" pointer-events="none"><tspan x="${x.toFixed(1)}" y="${y1}">${l1}</tspan><tspan x="${x.toFixed(1)}" y="${y2}">${l2}</tspan></text>`;
+}
+
+window.buildWheel = function(sel){
+  const [R0,R1,R2,R3]=R;
+  const PSTEP=360/EMOTIONS.length;
+  let paths='',labels='';
+  let pA=0;
+  EMOTIONS.forEach(em=>{
+    const pS=pA,pE=pA+PSTEP,pM=(pS+pE)/2;
+    const tot=em.subs.reduce((s,sub)=>s+sub.items.length,0);
+    paths+=`<path data-em="${ehtml(em.name)}" d="${apath(pS,pE,R0,R1)}" fill="${em.color}" stroke="#fff" stroke-width="2.5"/>`;
+    const pl=em.name.toUpperCase(),half=Math.ceil(pl.length/2);
+    const pmr=(R0+R1)/2;
+    const stroke='stroke="rgba(0,0,0,0.5)" stroke-width="3" paint-order="stroke fill"';
+    if(pl.length>7) labels+=tlabel2(pM,pmr,10,800,'#fff',ehtml(pl.slice(0,half)),ehtml(pl.slice(half))).replace('<text ','<text '+stroke+' ');
+    else labels+=tlabel(pM,pmr,11,800,'#fff',ehtml(pl)).replace('<text ','<text '+stroke+' ');
+    let sA=pS;
+    em.subs.forEach(sub=>{
+      const sSpan=PSTEP*sub.items.length/tot,sE=sA+sSpan,sM=(sA+sE)/2;
+      const sCol=lt(em.color,0.3);
+      const isSel1=sel===sub.name;
+      paths+=`<path data-em="${ehtml(sub.name)}" d="${apath(sA,sE,R1,R2)}" fill="${isSel1?em.color:sCol}" stroke="#fff" stroke-width="1.5"/>`;
+      labels+=tlabel(sM,(R1+R2)/2,9,700,isSel1?'#fff':'rgba(0,0,0,0.78)',ehtml(sub.name));
+      let tA=sA;
+      sub.items.forEach(item=>{
+        const tSpan=sSpan/sub.items.length,tE=tA+tSpan,tM=(tA+tE)/2;
+        const tCol=lt(em.color,0.58),isSel2=sel===item;
+        paths+=`<path data-em="${ehtml(item)}" d="${apath(tA,tE,R2,R3)}" fill="${isSel2?em.color:tCol}" stroke="#fff" stroke-width="1"/>`;
+        labels+=tlabel(tM,(R2+R3)/2,8.5,isSel2?700:600,isSel2?'#fff':'rgba(0,0,0,0.72)',ehtml(item));
+        tA=tE;
+      });
+      sA=sE;
+    });
+    pA=pE;
+  });
+  const cc=sel?findColor(sel):'#1a1a2e',lbl=sel?(sel.length>13?sel.slice(0,12)+'…':sel):'✦',lfs=sel?(sel.length>9?9:11):15;
+  return `<svg id="wsvg" viewBox="0 0 600 600" width="100%" style="max-width:480px;display:block;margin:0 auto;touch-action:manipulation">${paths}${labels}<circle cx="${CX}" cy="${CY}" r="${R0-4}" fill="${cc}" style="transition:fill .3s"/><text x="${CX}" y="${CY}" dy="0.35em" text-anchor="middle" font-size="${lfs}" font-weight="700" fill="#fff" font-family="sans-serif" pointer-events="none">${ehtml(lbl)}</text></svg>`;
+};
+})();
+
+// ═══════════════════════════════════════════════
+// VERTICAL EMOTION PICKER
+// ═══════════════════════════════════════════════
+function findColor(label) {
+  for (const em of EMOTIONS) {
+    if (em.name === label) return em.color;
+    for (const sub of em.subs) {
+      if (sub.name === label || sub.items.includes(label)) return em.color;
+    }
+  }
+  return '#888';
+}
+
+function buildPicker(selEmotion) {
+  // Determine which primary/sub are open based on current selection
+  let openPrimary = null, openSub = null;
+  if (selEmotion) {
+    for (const em of EMOTIONS) {
+      if (em.name === selEmotion) { openPrimary = em.name; break; }
+      for (const sub of em.subs) {
+        if (sub.name === selEmotion || sub.items.includes(selEmotion)) {
+          openPrimary = em.name; openSub = sub.name; break;
+        }
+      }
+      if (openPrimary) break;
+    }
+  }
+
+  let html = '<div class="emo-picker">';
+  for (const em of EMOTIONS) {
+    const isOpenP = openPrimary === em.name;
+    const selP = selEmotion === em.name;
+    html += `<div class="emo-primary${isOpenP?' open':''}" style="--ec:${em.color}">`;
+    html += `<button class="emo-primary-btn" onclick="pickPrimary('${ehtml(em.name)}')" style="--ec:${em.color}">`;
+    html += `<span class="dot" style="${selP?'background:#fff':''}"></span>`;
+    html += `${ehtml(em.name)}<span class="arrow">▼</span></button>`;
+
+    if (isOpenP) {
+      html += '<div class="emo-subs">';
+      for (const sub of em.subs) {
+        const isOpenS = openSub === sub.name;
+        const selS = selEmotion === sub.name;
+        html += `<div class="emo-sub${isOpenS?' open':''}" style="--ec:${em.color}">`;
+        html += `<button class="emo-sub-btn${selS?' selected':''}" onclick="pickSub('${ehtml(sub.name)}','${ehtml(em.name)}')" style="--ec:${em.color}">${ehtml(sub.name)}</button>`;
+        if (isOpenS) {
+          html += '<div class="emo-items">';
+          for (const item of sub.items) {
+            const selI = selEmotion === item;
+            html += `<button class="emo-item${selI?' selected':''}" onclick="pickItem('${ehtml(item)}')" style="--ec:${em.color}">${ehtml(item)}</button>`;
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function refreshPicker() {
+  const wrap = document.getElementById('picker-wrap');
+  if (wrap) {
+    wrap.innerHTML = S.pickerMode === 'wheel' ? buildWheel(S.form.emotion) : buildPicker(S.form.emotion);
+    if (S.pickerMode === 'wheel') bindWheelClicks();
+    updateBadge();
+    updateBtn();
+  }
+}
+
+function bindWheelClicks() {
+  const svg = document.getElementById('wsvg');
+  if (!svg) return;
+  svg.addEventListener('click', e => {
+    const t = e.target.closest('[data-em]');
+    if (!t) return;
+    snapForm();
+    S.form.emotion = t.getAttribute('data-em');
+    refreshPicker();
+  });
+}
+
+function togglePickerMode() {
+  snapForm();
+  S.pickerMode = S.pickerMode === 'vertical' ? 'wheel' : 'vertical';
+  refreshPicker();
+  // Update toggle button label
+  const tb = document.getElementById('toggle-btn');
+  if (tb) tb.textContent = S.pickerMode === 'vertical' ? '🔵 Vue roue' : '☰ Vue liste';
+}
+
+function updateBadge() {
+  const badge = document.getElementById('emo-badge');
+  if (!badge) return;
+  const col = findColor(S.form.emotion);
+  badge.innerHTML = S.form.emotion
+    ? `<span style="background:${col}22;color:${col};display:inline-block;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700">✓ ${ehtml(S.form.emotion)}</span>`
+    : '<span style="font-size:12px;color:#b0ada8">Sélectionne une émotion</span>';
+  // Update intensite slider color
+  const sl = document.getElementById('f-int');
+  if (sl) sl.style.accentColor = col;
+  // Show/hide intensite field
+  const intF = document.getElementById('int-field');
+  if (intF) intF.style.display = S.form.emotion ? '' : 'none';
+}
+
+function pickPrimary(name) {
+  snapForm();
+  // Toggle: if already open primary with this name, collapse
+  const isAlreadyOpen = S.form.emotion && (
+    S.form.emotion === name ||
+    EMOTIONS.find(e=>e.name===name)?.subs.some(s=>s.name===S.form.emotion||s.items.includes(S.form.emotion))
+  );
+  S.form.emotion = isAlreadyOpen ? '' : name;
+  refreshPicker();
+}
+
+function pickSub(subName, primaryName) {
+  snapForm();
+  S.form.emotion = S.form.emotion === subName ? primaryName : subName;
+  refreshPicker();
+}
+
+function pickItem(item) {
+  snapForm();
+  S.form.emotion = item;
+  refreshPicker();
+}
+
+// ═══════════════════════════════════════════════
+// FORM
+// ═══════════════════════════════════════════════
+function renderForm() {
+  const f = S.form;
+  const ok = f.situation.trim() && f.pensee.trim() && f.emotion;
+  const emCol = f.emotion ? findColor(f.emotion) : '';
+
+  document.getElementById('app').innerHTML = `
+    <div class="card" style="cursor:default">
+      <div class="field">
+        <label>Date et heure de l'événement</label>
+        <input type="datetime-local" id="f-ed" value="${ehtml(f.eventDate)}">
+      </div>
+      <div class="field">
+        <label>Situation</label>
+        <textarea id="f-sit" rows="3" placeholder="Qu'est-ce qui s'est passé ? Où, quand, avec qui ?">${ehtml(f.situation)}</textarea>
+      </div>
+      <div class="field">
+        <label>Pensée automatique</label>
+        <textarea id="f-pen" rows="3" placeholder="Quelle pensée t'a traversé l'esprit ?">${ehtml(f.pensee)}</textarea>
+      </div>
+
+      <div class="field">
+        <label>Émotion</label>
+        <div class="mode-toggle">
+          <button id="toggle-btn" onclick="togglePickerMode()">${S.pickerMode === 'vertical' ? '🔵 Vue roue' : '☰ Vue liste'}</button>
+        </div>
+        <div id="picker-wrap">${S.pickerMode === 'wheel' ? buildWheel(f.emotion) : buildPicker(f.emotion)}</div>
+        <div class="sel-badge" id="emo-badge" style="margin-top:10px">
+          ${f.emotion ? `<span style="background:${emCol}22;color:${emCol};display:inline-block;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700">✓ ${ehtml(f.emotion)}</span>` : '<span style="font-size:12px;color:#b0ada8">Sélectionne une émotion</span>'}
+        </div>
+      </div>
+
+      <div class="field" id="int-field" style="${f.emotion?'':'display:none'}">
+        <label>Intensité — <span id="int-label">${f.intensite}</span> / 10</label>
+        <div class="int-row">
+          <span class="hint">faible</span>
+          <input type="range" min="1" max="10" value="${f.intensite}" id="f-int" style="accent-color:${emCol}">
+          <span class="hint">intense</span>
+          <span class="int-num" id="int-num">${f.intensite}</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Note (facultatif)</label>
+        <textarea id="f-not" rows="2" placeholder="Contexte, réaction physique, stratégie utilisée…">${ehtml(f.note)}</textarea>
+      </div>
+      <button class="btn-submit" id="f-btn" onclick="submitForm()" ${ok?'':'disabled'}>Enregistrer</button>
+    </div>`;
+
+  if (S.pickerMode === 'wheel') bindWheelClicks();
+  document.getElementById('f-ed').addEventListener('change', e => S.form.eventDate = e.target.value);
+  document.getElementById('f-sit').addEventListener('input', e => { S.form.situation = e.target.value; updateBtn(); });
+  document.getElementById('f-pen').addEventListener('input', e => { S.form.pensee = e.target.value; updateBtn(); });
+  document.getElementById('f-not').addEventListener('input', e => S.form.note = e.target.value);
+
+  const intEl = document.getElementById('f-int');
+  if (intEl) intEl.addEventListener('input', e => {
+    S.form.intensite = +e.target.value;
+    document.getElementById('int-label').textContent = e.target.value;
+    document.getElementById('int-num').textContent = e.target.value;
+  });
+}
+
+function snapForm() {
+  if (!S.form) return;
+  const g = id => { const el = document.getElementById(id); return el ? el.value : null; };
+  if (g('f-ed') !== null) S.form.eventDate  = g('f-ed');
+  if (g('f-sit')!== null) S.form.situation  = g('f-sit');
+  if (g('f-pen')!== null) S.form.pensee     = g('f-pen');
+  if (g('f-not')!== null) S.form.note       = g('f-not');
+  if (g('f-int')!== null) S.form.intensite  = +g('f-int');
+}
+
+function updateBtn() {
+  const btn = document.getElementById('f-btn');
+  if (btn && S.form) btn.disabled = !(S.form.situation.trim() && S.form.pensee.trim() && S.form.emotion);
+}
+
+function submitForm() {
+  snapForm();
+  const f = S.form;
+  if (!f.situation.trim() || !f.pensee.trim() || !f.emotion) return;
+  S.entries.unshift({ id:Date.now().toString(), date:new Date().toISOString(), eventDate:f.eventDate, situation:f.situation, pensee:f.pensee, emotion:f.emotion, intensite:f.intensite, note:f.note });
+  save();
+  go('list');
+}
+
+// ═══════════════════════════════════════════════
+// UTILS & STORAGE
+// ═══════════════════════════════════════════════
+function ehtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function nowLocal() {
+  const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+function blank() { return { eventDate:nowLocal(), situation:'', pensee:'', emotion:'', intensite:5, note:'' }; }
+function load() { try { const r = localStorage.getItem('spe'); if (r) S.entries = JSON.parse(r); } catch(_){} }
+function save() { try { localStorage.setItem('spe', JSON.stringify(S.entries)); } catch(_){} }
+
+// ═══════════════════════════════════════════════
+// LIST
+// ═══════════════════════════════════════════════
+function fmt(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('fr-CA', { weekday:'short', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' });
+}
+
+function renderList() {
+  document.getElementById('tab-list').textContent = S.entries.length ? `Entrées (${S.entries.length})` : 'Entrées';
+  const actions = `<div class="list-actions">
+    <button class="btn-action" onclick="exportJSON()" ${!S.entries.length ? "disabled style='opacity:0.4'" : ""}>⬇ Exporter JSON</button>
+    <button class="btn-action" onclick="document.getElementById('json-import').click()">⬆ Importer JSON</button>
+  </div>`;
+  if (!S.entries.length) {
+    document.getElementById("app").innerHTML = actions + `<div class="empty"><div class="empty-icon">◯</div><h2>Aucune entrée.</h2><p>Commence via « + Nouvelle » ou importe un fichier JSON.</p></div>`;
+    return;
+  }
+  let html = actions;
+  S.entries.forEach(e => { html += entryCard(e); });
+  document.getElementById('app').innerHTML = html;
+}
+
+function entryCard(e) {
+  const col = findColor(e.emotion);
+  const open = S.expanded === e.id;
+  let inner = '';
+  if (open) {
+    const note = e.note && e.note.trim() ? `<div style="margin-bottom:14px"><div class="sec-label">Note</div><div class="sec-text">${ehtml(e.note)}</div></div>` : '';
+    const actions = S.confirmDel === e.id ?
+      `<div class="confirm-box"><span>Supprimer cette entrée ?</span>
+       <button class="btn-yes" onclick="delEntry('${e.id}')">Oui</button>
+       <button class="btn-no"  onclick="cancelDel()">Annuler</button></div>` :
+      `<button class="btn-del" onclick="askDel('${e.id}')">Supprimer</button>`;
+    inner = `<div class="expanded-sec" onclick="event.stopPropagation()">
+      <div style="margin-bottom:14px"><div class="sec-label">Pensée</div><div class="sec-text">${ehtml(e.pensee)}</div></div>
+      <div style="margin-bottom:14px"><div class="sec-label">Intensité</div>
+        <span class="int-bar-bg"><span class="int-bar-fill" style="width:${(e.intensite/10)*100}%;background:${col};display:block"></span></span>
+        &nbsp;<span style="font-size:13px;font-weight:700;color:${col}">${e.intensite}/10</span>
+      </div>
+      ${note}${actions}</div>`;
+  }
+  return `<div class="entry ${open?'open':''}" style="border-left-color:${col}" onclick="toggle('${e.id}')">
+    ${e.eventDate ? `<div class="ev-date">📅 ${ehtml(fmt(e.eventDate))}</div>` : ''}
+    <div class="rec-date">Enregistré le ${ehtml(fmt(e.date))}</div>
+    <div class="entry-row">
+      <div class="situation">${ehtml(e.situation)}</div>
+      <span class="pill" style="background:${col}22;color:${col}">${ehtml(e.emotion)}</span>
+    </div>${inner}</div>`;
+}
+
+function toggle(id)   { S.expanded = S.expanded===id ? null : id; S.confirmDel=null; renderList(); }
+function askDel(id)   { S.confirmDel = id; renderList(); }
+function cancelDel()  { S.confirmDel = null; renderList(); }
+function delEntry(id) { S.entries = S.entries.filter(e=>e.id!==id); save(); S.expanded=null; S.confirmDel=null; renderList(); }
+
+// ═══════════════════════════════════════════════
+// JSON EXPORT / IMPORT
+// ═══════════════════════════════════════════════
+async function exportJSON() {
+  const filename = `journal-spe-${new Date().toISOString().slice(0,10)}.json`;
+  const json = JSON.stringify(S.entries, null, 2);
+  const blob = new Blob([json], { type:'application/json' });
+  const file = new File([blob], filename, { type:'application/json' });
+
+  // Web Share API — ouvre la feuille de partage native (Google Drive, iCloud, Fichiers, courriel…)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Journal SPE', text: 'Sauvegarde du journal S·P·É' });
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return; // utilisateur a annulé
+    }
+  }
+
+  // Fallback : téléchargement direct (desktop ou navigateur sans Web Share)
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error();
+      const seen = new Set(S.entries.map(e => e.id));
+      const fresh = imported.filter(e => e.id && !seen.has(e.id));
+      S.entries = [...S.entries, ...fresh].sort((a,b) => new Date(b.date)-new Date(a.date));
+      save(); renderList();
+      alert(`${fresh.length} entrée(s) importée(s).`);
+    } catch(_) { alert('Fichier invalide.'); }
+  };
+  reader.readAsText(file); input.value='';
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function go(v) {
+  S.view=v; S.expanded=null; S.confirmDel=null;
+  document.getElementById('tab-list').className = 'tab'+(v==='list'?' active':'');
+  document.getElementById('tab-form').className = 'tab'+(v==='form'?' active':'');
+  window.scrollTo(0,0);
+  if (v==='list') renderList();
+  else { S.form=blank(); renderForm(); }
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+load();
+S.form = blank();
+renderList();
+</script>
+</body>
+</html>
