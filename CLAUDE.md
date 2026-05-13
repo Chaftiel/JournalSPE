@@ -44,8 +44,9 @@ Two modes toggled by `S.pickerMode`:
 ### Storage & data portability
 
 - `save()` / `load()` — read/write `S.entries` as JSON in `localStorage`
-- Export: uses Web Share API (mobile) with fallback to `<a download>` (desktop)
+- JSON export: uses Web Share API (mobile) with fallback to `<a download>` (desktop)
 - Import: merges by `id`, deduplicating against existing entries, then sorts by recorded date
+- Word export (`exportDocx()`): generates a `.docx` file in-browser using a self-contained pure-JS ZIP writer (`_zip` + `_crc32`) and OOXML. Produces a landscape table matching the CBT grid template — columns: Situation, Pensées automatiques, Émotions (X/10), Comportements (mapped from the `note` field). No external library required. `_xe(s)` is the XML-safe escape helper (distinct from `ehtml` which is for HTML).
 
 ## Development
 
