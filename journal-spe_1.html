@@ -176,7 +176,7 @@ const EMOTIONS = [
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
-const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, pickerMode:'vertical' };
+const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical' };
 
 // ═══════════════════════════════════════════════
 // SVG WHEEL BUILDER
@@ -490,11 +490,20 @@ function fmt(iso) {
 
 function renderList() {
   document.getElementById('tab-list').textContent = S.entries.length ? `Entrées (${S.entries.length})` : 'Entrées';
+  const disabledIfEmpty = !S.entries.length ? "disabled style='opacity:0.4'" : "";
+  const clearBtn = S.entries.length ? `<div class="list-actions" style="margin-top:-4px">
+    <button class="btn-action" onclick="askClearAll()" style="color:#c0392b;border-color:#f0cece">🗑 Vider la liste</button>
+  </div>` : '';
+  const clearConfirm = S.confirmClear ? `<div class="confirm-box" style="margin-bottom:12px">
+    <span>Supprimer les ${S.entries.length} entrée(s) ? Action irréversible.</span>
+    <button class="btn-yes" onclick="clearAll()">Tout supprimer</button>
+    <button class="btn-no" onclick="cancelClearAll()">Annuler</button>
+  </div>` : '';
   const actions = `<div class="list-actions">
-    <button class="btn-action" onclick="exportJSON()" ${!S.entries.length ? "disabled style='opacity:0.4'" : ""}>⬇ Exporter JSON</button>
-    <button class="btn-action" onclick="exportDocx()" ${!S.entries.length ? "disabled style='opacity:0.4'" : ""}>⬇ Exporter Word</button>
+    <button class="btn-action" onclick="exportJSON()" ${disabledIfEmpty}>⬇ Exporter JSON</button>
+    <button class="btn-action" onclick="exportDocx()" ${disabledIfEmpty}>⬇ Exporter Word</button>
     <button class="btn-action" onclick="document.getElementById('json-import').click()">⬆ Importer JSON</button>
-  </div>`;
+  </div>${clearBtn}${clearConfirm}`;
   if (!S.entries.length) {
     document.getElementById("app").innerHTML = actions + `<div class="empty"><div class="empty-icon">◯</div><h2>Aucune entrée.</h2><p>Commence via « + Nouvelle » ou importe un fichier JSON.</p></div>`;
     return;
@@ -532,10 +541,13 @@ function entryCard(e) {
     </div>${inner}</div>`;
 }
 
-function toggle(id)   { S.expanded = S.expanded===id ? null : id; S.confirmDel=null; renderList(); }
-function askDel(id)   { S.confirmDel = id; renderList(); }
-function cancelDel()  { S.confirmDel = null; renderList(); }
-function delEntry(id) { S.entries = S.entries.filter(e=>e.id!==id); save(); S.expanded=null; S.confirmDel=null; renderList(); }
+function toggle(id)      { S.expanded = S.expanded===id ? null : id; S.confirmDel=null; S.confirmClear=false; renderList(); }
+function askDel(id)      { S.confirmDel = id; renderList(); }
+function cancelDel()     { S.confirmDel = null; renderList(); }
+function delEntry(id)    { S.entries = S.entries.filter(e=>e.id!==id); save(); S.expanded=null; S.confirmDel=null; renderList(); }
+function askClearAll()   { S.confirmClear = true; S.expanded=null; S.confirmDel=null; renderList(); }
+function cancelClearAll(){ S.confirmClear = false; renderList(); }
+function clearAll()      { S.entries = []; save(); S.confirmClear = false; renderList(); }
 
 // ═══════════════════════════════════════════════
 // JSON EXPORT / IMPORT
@@ -707,7 +719,7 @@ async function exportDocx(){
 // NAVIGATION
 // ═══════════════════════════════════════════════
 function go(v) {
-  S.view=v; S.expanded=null; S.confirmDel=null;
+  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false;
   document.getElementById('tab-list').className = 'tab'+(v==='list'?' active':'');
   document.getElementById('tab-form').className = 'tab'+(v==='form'?' active':'');
   window.scrollTo(0,0);
