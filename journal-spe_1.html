@@ -176,7 +176,7 @@ const EMOTIONS = [
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
-const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical' };
+const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical', pickerOpenSub:null };
 
 // ═══════════════════════════════════════════════
 // SVG WHEEL BUILDER
@@ -263,14 +263,15 @@ function findColor(label) {
 }
 
 function buildPicker(selEmotion) {
-  // Determine which primary/sub are open based on current selection
-  let openPrimary = null, openSub = null;
+  // openPrimary: derived from selected emotion (keeps the right accordion open)
+  // isOpenS: uses S.pickerOpenSub (explicit user action) OR tertiary already selected
+  let openPrimary = null;
   if (selEmotion) {
     for (const em of EMOTIONS) {
       if (em.name === selEmotion) { openPrimary = em.name; break; }
       for (const sub of em.subs) {
         if (sub.name === selEmotion || sub.items.includes(selEmotion)) {
-          openPrimary = em.name; openSub = sub.name; break;
+          openPrimary = em.name; break;
         }
       }
       if (openPrimary) break;
@@ -289,15 +290,16 @@ function buildPicker(selEmotion) {
     if (isOpenP) {
       html += '<div class="emo-subs">';
       for (const sub of em.subs) {
-        const isOpenS = openSub === sub.name;
         const selS = selEmotion === sub.name;
+        // Sub accordion opens only when explicitly expanded (S.pickerOpenSub) OR a tertiary within is selected
+        const isOpenS = S.pickerOpenSub === sub.name || sub.items.includes(selEmotion);
         html += `<div class="emo-sub${isOpenS?' open':''}" style="--ec:${em.color}">`;
         html += `<button class="emo-sub-btn${selS?' selected':''}" onclick="pickSub('${ehtml(sub.name)}','${ehtml(em.name)}')" style="--ec:${em.color}">${selS ? '✓ ' : ''}${ehtml(sub.name)}</button>`;
         if (isOpenS) {
           html += '<div class="emo-items">';
           for (const item of sub.items) {
             const selI = selEmotion === item;
-            html += `<button class="emo-item${selI?' selected':''}" onclick="pickItem('${ehtml(item)}')" style="--ec:${em.color}">${ehtml(item)}</button>`;
+            html += `<button class="emo-item${selI?' selected':''}" onclick="pickItem('${ehtml(item)}','${ehtml(sub.name)}')" style="--ec:${em.color}">${ehtml(item)}</button>`;
           }
           html += '</div>';
         }
@@ -359,21 +361,28 @@ function updateBadge() {
 
 function pickPrimary(name) {
   snapForm();
-  // Click when already at this primary level → deselect; otherwise → select (even from a child)
   S.form.emotion = S.form.emotion === name ? '' : name;
+  S.pickerOpenSub = null;
   refreshPicker();
 }
 
 function pickSub(subName, primaryName) {
   snapForm();
-  // Always select the secondary; click primary button to go back up
-  S.form.emotion = subName;
+  if (S.form.emotion === subName) {
+    // Already selected at secondary level → toggle tertiary visibility to allow refinement
+    S.pickerOpenSub = S.pickerOpenSub === subName ? null : subName;
+  } else {
+    // New secondary selection → select without expanding tertiary
+    S.form.emotion = subName;
+    S.pickerOpenSub = null;
+  }
   refreshPicker();
 }
 
-function pickItem(item) {
+function pickItem(item, subName) {
   snapForm();
   S.form.emotion = item;
+  S.pickerOpenSub = subName; // keep sub open so the selected tertiary stays visible
   refreshPicker();
 }
 
@@ -719,7 +728,7 @@ async function exportDocx(){
 // NAVIGATION
 // ═══════════════════════════════════════════════
 function go(v) {
-  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false;
+  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false; S.pickerOpenSub=null;
   document.getElementById('tab-list').className = 'tab'+(v==='list'?' active':'');
   document.getElementById('tab-form').className = 'tab'+(v==='form'?' active':'');
   window.scrollTo(0,0);
