@@ -493,6 +493,7 @@ function renderList() {
   document.getElementById('tab-list').textContent = S.entries.length ? `Entrées (${S.entries.length})` : 'Entrées';
   const actions = `<div class="list-actions">
     <button class="btn-action" onclick="exportJSON()" ${!S.entries.length ? "disabled style='opacity:0.4'" : ""}>⬇ Exporter JSON</button>
+    <button class="btn-action" onclick="exportDocx()" ${!S.entries.length ? "disabled style='opacity:0.4'" : ""}>⬇ Exporter Word</button>
     <button class="btn-action" onclick="document.getElementById('json-import').click()">⬆ Importer JSON</button>
   </div>`;
   if (!S.entries.length) {
@@ -579,6 +580,128 @@ function importJSON(input) {
     } catch(_) { alert('Fichier invalide.'); }
   };
   reader.readAsText(file); input.value='';
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT WORD (DOCX) — ZIP minimal + OOXML
+// ═══════════════════════════════════════════════
+const _CRC = (function(){
+  const t = new Uint32Array(256);
+  for (let i=0; i<256; i++) { let c=i; for (let j=0; j<8; j++) c=c&1?0xEDB88320^c>>>1:c>>>1; t[i]=c; }
+  return t;
+})();
+function _crc32(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=_CRC[(c^b[i])&0xFF]^c>>>8; return(c^0xFFFFFFFF)>>>0; }
+
+function _zip(files){
+  const u16=n=>[n&0xFF,n>>8&0xFF], u32=n=>[n&0xFF,n>>8&0xFF,n>>16&0xFF,n>>24&0xFF];
+  const encode=s=>new TextEncoder().encode(s);
+  const parts=[], cd=[];
+  let off=0;
+  for(const{name,data}of files){
+    const nb=encode(name), crc=_crc32(data), sz=data.length;
+    const lh=new Uint8Array([0x50,0x4B,3,4,20,0,0,0,0,0,0,0,0,0,...u32(crc),...u32(sz),...u32(sz),...u16(nb.length),0,0,...nb]);
+    cd.push({nb,crc,sz,off}); parts.push(lh,data); off+=lh.length+sz;
+  }
+  let cdSz=0, cdOff=off;
+  const cdParts=cd.map(({nb,crc,sz,off:o})=>{
+    const e=new Uint8Array([0x50,0x4B,1,2,20,0,20,0,0,0,0,0,0,0,0,0,...u32(crc),...u32(sz),...u32(sz),...u16(nb.length),0,0,0,0,0,0,0,0,0,0,0,0,...u32(o),...nb]);
+    cdSz+=e.length; return e;
+  });
+  const eocd=new Uint8Array([0x50,0x4B,5,6,0,0,0,0,...u16(cd.length),...u16(cd.length),...u32(cdSz),...u32(cdOff),0,0]);
+  const all=[...parts,...cdParts,eocd], buf=new Uint8Array(all.reduce((s,a)=>s+a.length,0));
+  let p=0; for(const a of all){buf.set(a,p);p+=a.length;} return buf;
+}
+
+function _xe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function _wCell(text, width, {center=false, bold=false, color='', bg=''}={}){
+  const shd = bg ? `<w:shd w:val="clear" w:color="auto" w:fill="${bg}"/>` : '';
+  const rp = [bold?'<w:b/>':'', color?`<w:color w:val="${color}"/>`:''].filter(Boolean).join('');
+  const runs = String(text||'').split('\n').map((ln,i)=>
+    (i ? '<w:r><w:br/></w:r>' : '') + `<w:r>${rp?`<w:rPr>${rp}</w:rPr>`:''}<w:t xml:space="preserve">${_xe(ln)}</w:t></w:r>`
+  ).join('');
+  return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${shd}</w:tcPr><w:p>${center?'<w:pPr><w:jc w:val="center"/></w:pPr>':''}${runs}</w:p></w:tc>`;
+}
+
+async function exportDocx(){
+  if(!S.entries.length) return;
+  const W=[3091,4159,2022,3386], TOTAL=12658;
+  const BG='1a1a2e', HBG='2d2d4e', FG='f5f0eb';
+
+  const rows = S.entries.map(e => `<w:tr>
+    ${_wCell([e.eventDate ? fmt(e.eventDate) : '', e.situation].filter(Boolean).join('\n'), W[0])}
+    ${_wCell(e.pensee, W[1])}
+    ${_wCell(e.emotion + '\n' + e.intensite + '/10', W[2], {center:true})}
+    ${_wCell(e.note || '', W[3])}
+  </w:tr>`).join('');
+
+  const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:tbl>
+  <w:tblPr><w:tblW w:w="${TOTAL}" w:type="dxa"/>
+    <w:tblBorders>
+      <w:top    w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+      <w:left   w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+      <w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+      <w:right  w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+      <w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>
+    </w:tblBorders>
+  </w:tblPr>
+  <w:tblGrid>${W.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>
+  <w:tr><w:tc>
+    <w:tcPr><w:tcW w:w="${TOTAL}" w:type="dxa"/><w:gridSpan w:val="4"/><w:shd w:val="clear" w:color="auto" w:fill="${BG}"/></w:tcPr>
+    <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+      <w:r><w:rPr><w:b/><w:color w:val="${FG}"/><w:sz w:val="28"/></w:rPr>
+        <w:t>Grille d'identification des pensées automatiques</w:t></w:r>
+    </w:p>
+  </w:tc></w:tr>
+  <w:tr>
+    ${_wCell('Situation',              W[0], {center:true, bold:true, color:FG, bg:HBG})}
+    ${_wCell('Pensées automatiques', W[1], {center:true, bold:true, color:FG, bg:HBG})}
+    ${_wCell('Émotions\n(X/10)', W[2], {center:true, bold:true, color:FG, bg:HBG})}
+    ${_wCell('Comportements',          W[3], {center:true, bold:true, color:FG, bg:HBG})}
+  </w:tr>
+  ${rows}
+</w:tbl>
+<w:sectPr>
+  <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
+  <w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417" w:header="708" w:footer="708" w:gutter="0"/>
+</w:sectPr>
+</w:body></w:document>`;
+
+  const encode = s => new TextEncoder().encode(s);
+  const zipBuf = _zip([
+    {name:'[Content_Types].xml', data:encode(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      '</Types>')},
+    {name:'_rels/.rels', data:encode(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      '</Relationships>')},
+    {name:'word/document.xml',            data:encode(docXml)},
+    {name:'word/_rels/document.xml.rels', data:encode(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>')},
+  ]);
+
+  const filename = `grille-spe-${new Date().toISOString().slice(0,10)}.docx`;
+  const blob = new Blob([zipBuf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const file = new File([blob], filename, {type:blob.type});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:'Grille SPÉ'}); return; }
+    catch(e){ if(e.name==='AbortError') return; }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ═══════════════════════════════════════════════
