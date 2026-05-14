@@ -80,6 +80,8 @@
     .emo-primary-btn .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.5); flex-shrink: 0; }
     .emo-primary-btn .arrow { margin-left: auto; font-size: 11px; opacity: 0.7; transition: transform 0.2s; }
     .emo-primary.open .arrow { transform: rotate(180deg); }
+    .emo-primary-btn.selected .arrow { transform: none; opacity: 1; }
+    .emo-primary-btn.selected { box-shadow: inset 0 0 0 2.5px rgba(255,255,255,0.6); }
     .emo-subs { display: none; background: #faf7f4; padding: 8px; flex-direction: column; gap: 6px; }
     .emo-primary.open .emo-subs { display: flex; }
     .emo-sub { border-radius: 8px; overflow: hidden; }
@@ -174,7 +176,7 @@ const EMOTIONS = [
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
-const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, pickerMode:'vertical' };
+const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical', pickerOpenSub:null };
 
 // ═══════════════════════════════════════════════
 // SVG WHEEL BUILDER
@@ -261,14 +263,15 @@ function findColor(label) {
 }
 
 function buildPicker(selEmotion) {
-  // Determine which primary/sub are open based on current selection
-  let openPrimary = null, openSub = null;
+  // openPrimary: derived from selected emotion (keeps the right accordion open)
+  // isOpenS: uses S.pickerOpenSub (explicit user action) OR tertiary already selected
+  let openPrimary = null;
   if (selEmotion) {
     for (const em of EMOTIONS) {
       if (em.name === selEmotion) { openPrimary = em.name; break; }
       for (const sub of em.subs) {
         if (sub.name === selEmotion || sub.items.includes(selEmotion)) {
-          openPrimary = em.name; openSub = sub.name; break;
+          openPrimary = em.name; break;
         }
       }
       if (openPrimary) break;
@@ -280,22 +283,23 @@ function buildPicker(selEmotion) {
     const isOpenP = openPrimary === em.name;
     const selP = selEmotion === em.name;
     html += `<div class="emo-primary${isOpenP?' open':''}" style="--ec:${em.color}">`;
-    html += `<button class="emo-primary-btn" onclick="pickPrimary('${ehtml(em.name)}')" style="--ec:${em.color}">`;
-    html += `<span class="dot" style="${selP?'background:#fff':''}"></span>`;
-    html += `${ehtml(em.name)}<span class="arrow">▼</span></button>`;
+    html += `<button class="emo-primary-btn${selP?' selected':''}" onclick="pickPrimary('${ehtml(em.name)}')" style="--ec:${em.color}">`;
+    html += `<span class="dot"></span>`;
+    html += `${ehtml(em.name)}<span class="arrow">${selP ? '✓' : '▼'}</span></button>`;
 
     if (isOpenP) {
       html += '<div class="emo-subs">';
       for (const sub of em.subs) {
-        const isOpenS = openSub === sub.name;
         const selS = selEmotion === sub.name;
+        // Sub accordion opens only when explicitly expanded (S.pickerOpenSub) OR a tertiary within is selected
+        const isOpenS = S.pickerOpenSub === sub.name || sub.items.includes(selEmotion);
         html += `<div class="emo-sub${isOpenS?' open':''}" style="--ec:${em.color}">`;
-        html += `<button class="emo-sub-btn${selS?' selected':''}" onclick="pickSub('${ehtml(sub.name)}','${ehtml(em.name)}')" style="--ec:${em.color}">${ehtml(sub.name)}</button>`;
+        html += `<button class="emo-sub-btn${selS?' selected':''}" onclick="pickSub('${ehtml(sub.name)}','${ehtml(em.name)}')" style="--ec:${em.color}">${selS ? '✓ ' : ''}${ehtml(sub.name)}</button>`;
         if (isOpenS) {
           html += '<div class="emo-items">';
           for (const item of sub.items) {
             const selI = selEmotion === item;
-            html += `<button class="emo-item${selI?' selected':''}" onclick="pickItem('${ehtml(item)}')" style="--ec:${em.color}">${ehtml(item)}</button>`;
+            html += `<button class="emo-item${selI?' selected':''}" onclick="pickItem('${ehtml(item)}','${ehtml(sub.name)}')" style="--ec:${em.color}">${ehtml(item)}</button>`;
           }
           html += '</div>';
         }
@@ -357,24 +361,28 @@ function updateBadge() {
 
 function pickPrimary(name) {
   snapForm();
-  // Toggle: if already open primary with this name, collapse
-  const isAlreadyOpen = S.form.emotion && (
-    S.form.emotion === name ||
-    EMOTIONS.find(e=>e.name===name)?.subs.some(s=>s.name===S.form.emotion||s.items.includes(S.form.emotion))
-  );
-  S.form.emotion = isAlreadyOpen ? '' : name;
+  S.form.emotion = S.form.emotion === name ? '' : name;
+  S.pickerOpenSub = null;
   refreshPicker();
 }
 
 function pickSub(subName, primaryName) {
   snapForm();
-  S.form.emotion = S.form.emotion === subName ? primaryName : subName;
+  if (S.form.emotion === subName) {
+    // Already selected at secondary level → toggle tertiary visibility to allow refinement
+    S.pickerOpenSub = S.pickerOpenSub === subName ? null : subName;
+  } else {
+    // New secondary selection → select without expanding tertiary
+    S.form.emotion = subName;
+    S.pickerOpenSub = null;
+  }
   refreshPicker();
 }
 
-function pickItem(item) {
+function pickItem(item, subName) {
   snapForm();
   S.form.emotion = item;
+  S.pickerOpenSub = subName; // keep sub open so the selected tertiary stays visible
   refreshPicker();
 }
 
@@ -491,11 +499,20 @@ function fmt(iso) {
 
 function renderList() {
   document.getElementById('tab-list').textContent = S.entries.length ? `Entrées (${S.entries.length})` : 'Entrées';
+  const disabledIfEmpty = !S.entries.length ? "disabled style='opacity:0.4'" : "";
+  const clearBtn = S.entries.length ? `<div class="list-actions" style="margin-top:-4px">
+    <button class="btn-action" onclick="askClearAll()" style="color:#c0392b;border-color:#f0cece">🗑 Vider la liste</button>
+  </div>` : '';
+  const clearConfirm = S.confirmClear ? `<div class="confirm-box" style="margin-bottom:12px">
+    <span>Supprimer les ${S.entries.length} entrée(s) ? Action irréversible.</span>
+    <button class="btn-yes" onclick="clearAll()">Tout supprimer</button>
+    <button class="btn-no" onclick="cancelClearAll()">Annuler</button>
+  </div>` : '';
   const actions = `<div class="list-actions">
-    <button class="btn-action" onclick="exportJSON()" ${!S.entries.length ? "disabled style='opacity:0.4'" : ""}>⬇ Exporter JSON</button>
-    <button class="btn-action" onclick="exportDocx()" ${!S.entries.length ? "disabled style='opacity:0.4'" : ""}>⬇ Exporter Word</button>
+    <button class="btn-action" onclick="exportJSON()" ${disabledIfEmpty}>⬇ Exporter JSON</button>
+    <button class="btn-action" onclick="exportDocx()" ${disabledIfEmpty}>⬇ Exporter Word</button>
     <button class="btn-action" onclick="document.getElementById('json-import').click()">⬆ Importer JSON</button>
-  </div>`;
+  </div>${clearBtn}${clearConfirm}`;
   if (!S.entries.length) {
     document.getElementById("app").innerHTML = actions + `<div class="empty"><div class="empty-icon">◯</div><h2>Aucune entrée.</h2><p>Commence via « + Nouvelle » ou importe un fichier JSON.</p></div>`;
     return;
@@ -533,10 +550,13 @@ function entryCard(e) {
     </div>${inner}</div>`;
 }
 
-function toggle(id)   { S.expanded = S.expanded===id ? null : id; S.confirmDel=null; renderList(); }
-function askDel(id)   { S.confirmDel = id; renderList(); }
-function cancelDel()  { S.confirmDel = null; renderList(); }
-function delEntry(id) { S.entries = S.entries.filter(e=>e.id!==id); save(); S.expanded=null; S.confirmDel=null; renderList(); }
+function toggle(id)      { S.expanded = S.expanded===id ? null : id; S.confirmDel=null; S.confirmClear=false; renderList(); }
+function askDel(id)      { S.confirmDel = id; renderList(); }
+function cancelDel()     { S.confirmDel = null; renderList(); }
+function delEntry(id)    { S.entries = S.entries.filter(e=>e.id!==id); save(); S.expanded=null; S.confirmDel=null; renderList(); }
+function askClearAll()   { S.confirmClear = true; S.expanded=null; S.confirmDel=null; renderList(); }
+function cancelClearAll(){ S.confirmClear = false; renderList(); }
+function clearAll()      { S.entries = []; save(); S.confirmClear = false; renderList(); }
 
 // ═══════════════════════════════════════════════
 // JSON EXPORT / IMPORT
@@ -708,7 +728,7 @@ async function exportDocx(){
 // NAVIGATION
 // ═══════════════════════════════════════════════
 function go(v) {
-  S.view=v; S.expanded=null; S.confirmDel=null;
+  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false; S.pickerOpenSub=null;
   document.getElementById('tab-list').className = 'tab'+(v==='list'?' active':'');
   document.getElementById('tab-form').className = 'tab'+(v==='form'?' active':'');
   window.scrollTo(0,0);
