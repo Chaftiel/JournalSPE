@@ -18,8 +18,9 @@ A single global object `S` holds all runtime state:
 - `S.view` — current tab (`'list'` or `'form'`)
 - `S.entries` — array of journal entries, persisted to `localStorage` under the key `'spe'`
 - `S.form` — the in-progress entry object `{ eventDate, situation, pensee, emotion, intensite, note }`
-- `S.expanded` / `S.confirmDel` — UI state for the list view
+- `S.expanded` / `S.confirmDel` / `S.confirmClear` — UI state for the list view
 - `S.pickerMode` — `'vertical'` (accordion) or `'wheel'` (SVG)
+- `S.pickerOpenSub` — which secondary accordion is explicitly expanded (decoupled from `S.form.emotion`)
 
 ### Emotion data
 
@@ -36,7 +37,7 @@ The app uses **innerHTML string-based rendering** — no virtual DOM, no framewo
 ### Emotion picker
 
 Two modes toggled by `S.pickerMode`:
-- **Vertical** (`buildPicker()`): accordion-style nested buttons
+- **Vertical** (`buildPicker()`): accordion-style nested buttons. Emotion selection and accordion expansion are intentionally decoupled — `S.form.emotion` tracks the selected emotion at any level (primary, secondary, or tertiary); `S.pickerOpenSub` tracks which secondary accordion is open for browsing. First click on a secondary selects it without expanding; second click expands tertiary items as optional refinements.
 - **Wheel** (`buildWheel()`): procedurally generated SVG using arc path math. The wheel is rebuilt as a string on every selection change.
 
 `findColor(label)` resolves any emotion label (primary, secondary, or tertiary) to its primary hex color — used throughout for consistent theming.
