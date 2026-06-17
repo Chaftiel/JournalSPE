@@ -17,10 +17,11 @@ Everything lives in `journal-spe_1.html`: CSS in `<style>`, HTML structure, and 
 A single global object `S` holds all runtime state:
 - `S.view` — current tab (`'list'` or `'form'`)
 - `S.entries` — array of journal entries, persisted to `localStorage` under the key `'spe'`
-- `S.form` — the in-progress entry object `{ eventDate, situation, pensee, emotion, intensite, note }`
+- `S.form` — the in-progress entry object `{ eventDate, situation, pensee, emotion, intensite, note, mitigation, intensiteApres }`
 - `S.expanded` / `S.confirmDel` / `S.confirmClear` — UI state for the list view
 - `S.pickerMode` — `'vertical'` (accordion) or `'wheel'` (SVG)
 - `S.pickerOpenSub` — which secondary accordion is explicitly expanded (decoupled from `S.form.emotion`)
+- `S.mitigationOpen` — whether the optional re-evaluation section is visible in the form
 
 ### Emotion data
 
@@ -47,7 +48,15 @@ Two modes toggled by `S.pickerMode`:
 - `save()` / `load()` — read/write `S.entries` as JSON in `localStorage`
 - JSON export: uses Web Share API (mobile) with fallback to `<a download>` (desktop)
 - Import: merges by `id`, deduplicating against existing entries, then sorts by recorded date
-- Word export (`exportDocx()`): generates a `.docx` file in-browser using a self-contained pure-JS ZIP writer (`_zip` + `_crc32`) and OOXML. Produces a landscape table matching the CBT grid template — columns: Situation, Pensées automatiques, Émotions (X/10), Comportements (mapped from the `note` field). No external library required. `_xe(s)` is the XML-safe escape helper (distinct from `ehtml` which is for HTML).
+- Word export (`exportDocx()`): generates a `.docx` file in-browser using a self-contained pure-JS ZIP writer (`_zip` + `_crc32`) and OOXML. Produces a landscape table matching the CBT grid template — columns: Situation, Pensées automatiques, Émotions (X/10), Comportements (mapped from `note` + `mitigation` + re-evaluation if present). No external library required. `_xe(s)` is the XML-safe escape helper (distinct from `ehtml` which is for HTML).
+
+### Optional re-evaluation section
+
+`S.mitigationOpen` controls a collapsible section at the bottom of the entry form. When open it captures:
+- `mitigation` — free-text coping method used
+- `intensiteApres` — re-rated emotion intensity (1–10); defaults to `intensite` on first open
+
+`snapForm()` only reads `f-mit` / `f-int2` when `S.mitigationOpen` is true. `intensiteApres` is saved as `null` when the section was never opened. The entry card shows a before/after intensity comparison with a delta badge (▼ / ▲ / = stable).
 
 ## Development
 
