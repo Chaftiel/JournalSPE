@@ -108,6 +108,12 @@
       cursor: pointer; font-family: inherit; touch-action: manipulation;
     }
     .mode-toggle button:hover { border-color: #1a1a2e; color: #1a1a2e; }
+
+    /* ── Section réévaluation ── */
+    .btn-reeval { width:100%; padding:10px; background:#f5f0eb; border:1.5px dashed #c0bdb8; border-radius:8px; color:#6a6a8a; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; touch-action:manipulation; text-align:center; }
+    .btn-reeval:hover { border-color:#1a1a2e; color:#1a1a2e; }
+    .reeval-card { background:#f5f0eb; border-radius:12px; padding:16px 18px; margin-top:0; border:1.5px solid #e0ddd8; }
+    .delta-badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:700; margin-left:8px; }
   </style>
 </head>
 <body>
@@ -176,7 +182,7 @@ const EMOTIONS = [
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
-const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical', pickerOpenSub:null };
+const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical', pickerOpenSub:null, mitigationOpen:false };
 
 // ═══════════════════════════════════════════════
 // SVG WHEEL BUILDER
@@ -434,6 +440,29 @@ function renderForm() {
         <label>Note (facultatif)</label>
         <textarea id="f-not" rows="2" placeholder="Contexte, réaction physique, stratégie utilisée…">${ehtml(f.note)}</textarea>
       </div>
+
+      <button type="button" class="btn-reeval" onclick="toggleMitigation()">
+        ${S.mitigationOpen ? '▲ Masquer la réévaluation' : '✦ Ajouter une réévaluation'}
+      </button>
+    </div>
+
+    ${S.mitigationOpen ? `<div class="reeval-card">
+      <div class="field" style="margin-bottom:18px">
+        <label>Méthode de mitigation</label>
+        <textarea id="f-mit" rows="2" placeholder="Qu'as-tu fait pour gérer cette émotion ?">${ehtml(f.mitigation)}</textarea>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Intensité après — <span id="int2-label">${f.intensiteApres}</span> / 10</label>
+        <div class="int-row">
+          <span class="hint">faible</span>
+          <input type="range" min="1" max="10" value="${f.intensiteApres}" id="f-int2" style="accent-color:${emCol}">
+          <span class="hint">intense</span>
+          <span class="int-num" id="int2-num">${f.intensiteApres}</span>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <div style="padding:0 0 4px">
       <button class="btn-submit" id="f-btn" onclick="submitForm()" ${ok?'':'disabled'}>Enregistrer</button>
     </div>`;
 
@@ -449,6 +478,16 @@ function renderForm() {
     document.getElementById('int-label').textContent = e.target.value;
     document.getElementById('int-num').textContent = e.target.value;
   });
+
+  const mitEl = document.getElementById('f-mit');
+  if (mitEl) mitEl.addEventListener('input', e => S.form.mitigation = e.target.value);
+
+  const int2El = document.getElementById('f-int2');
+  if (int2El) int2El.addEventListener('input', e => {
+    S.form.intensiteApres = +e.target.value;
+    document.getElementById('int2-label').textContent = e.target.value;
+    document.getElementById('int2-num').textContent = e.target.value;
+  });
 }
 
 function snapForm() {
@@ -459,6 +498,19 @@ function snapForm() {
   if (g('f-pen')!== null) S.form.pensee     = g('f-pen');
   if (g('f-not')!== null) S.form.note       = g('f-not');
   if (g('f-int')!== null) S.form.intensite  = +g('f-int');
+  if (S.mitigationOpen) {
+    if (g('f-mit') !== null) S.form.mitigation   = g('f-mit');
+    if (g('f-int2')!== null) S.form.intensiteApres = +g('f-int2');
+  }
+}
+
+function toggleMitigation() {
+  snapForm();
+  S.mitigationOpen = !S.mitigationOpen;
+  if (S.mitigationOpen && S.form.intensiteApres === null) {
+    S.form.intensiteApres = S.form.intensite; // point de départ = intensité actuelle
+  }
+  renderForm();
 }
 
 function updateBtn() {
@@ -470,7 +522,7 @@ function submitForm() {
   snapForm();
   const f = S.form;
   if (!f.situation.trim() || !f.pensee.trim() || !f.emotion) return;
-  S.entries.unshift({ id:Date.now().toString(), date:new Date().toISOString(), eventDate:f.eventDate, situation:f.situation, pensee:f.pensee, emotion:f.emotion, intensite:f.intensite, note:f.note });
+  S.entries.unshift({ id:Date.now().toString(), date:new Date().toISOString(), eventDate:f.eventDate, situation:f.situation, pensee:f.pensee, emotion:f.emotion, intensite:f.intensite, note:f.note, mitigation:f.mitigation||'', intensiteApres:S.mitigationOpen ? f.intensiteApres : null });
   save();
   go('list');
 }
@@ -485,7 +537,7 @@ function nowLocal() {
   const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 }
-function blank() { return { eventDate:nowLocal(), situation:'', pensee:'', emotion:'', intensite:5, note:'' }; }
+function blank() { return { eventDate:nowLocal(), situation:'', pensee:'', emotion:'', intensite:5, note:'', mitigation:'', intensiteApres:null }; }
 function load() { try { const r = localStorage.getItem('spe'); if (r) S.entries = JSON.parse(r); } catch(_){} }
 function save() { try { localStorage.setItem('spe', JSON.stringify(S.entries)); } catch(_){} }
 
@@ -528,6 +580,26 @@ function entryCard(e) {
   let inner = '';
   if (open) {
     const note = e.note && e.note.trim() ? `<div style="margin-bottom:14px"><div class="sec-label">Note</div><div class="sec-text">${ehtml(e.note)}</div></div>` : '';
+    const delta = e.intensiteApres !== null && e.intensiteApres !== undefined ? e.intensiteApres - e.intensite : null;
+    const deltaLabel = delta === null ? '' : delta < 0
+      ? `<span class="delta-badge" style="background:#e8f5e9;color:#2e7d32">▼ ${Math.abs(delta)} pt${Math.abs(delta)>1?'s':''}</span>`
+      : delta > 0
+      ? `<span class="delta-badge" style="background:#fce4ec;color:#c62828">▲ ${delta} pt${delta>1?'s':''}</span>`
+      : `<span class="delta-badge" style="background:#f5f0eb;color:#888">= stable</span>`;
+    const reeval = e.intensiteApres !== null && e.intensiteApres !== undefined ? `
+      <div style="margin-bottom:14px">
+        <div class="sec-label">Réévaluation après mitigation</div>
+        ${e.mitigation && e.mitigation.trim() ? `<div class="sec-text" style="margin-bottom:8px">${ehtml(e.mitigation)}</div>` : ''}
+        <div>
+          <span style="font-size:12px;color:#888;margin-right:6px">Avant</span>
+          <span class="int-bar-bg"><span class="int-bar-fill" style="width:${(e.intensite/10)*100}%;background:${col};opacity:0.4;display:block"></span></span>
+          <span style="font-size:12px;font-weight:700;color:${col};margin:0 10px 0 4px">${e.intensite}/10</span>
+          <span style="font-size:12px;color:#888;margin-right:6px">Après</span>
+          <span class="int-bar-bg"><span class="int-bar-fill" style="width:${(e.intensiteApres/10)*100}%;background:${col};display:block"></span></span>
+          <span style="font-size:12px;font-weight:700;color:${col};margin-left:4px">${e.intensiteApres}/10</span>
+          ${deltaLabel}
+        </div>
+      </div>` : (e.mitigation && e.mitigation.trim() ? `<div style="margin-bottom:14px"><div class="sec-label">Mitigation</div><div class="sec-text">${ehtml(e.mitigation)}</div></div>` : '');
     const actions = S.confirmDel === e.id ?
       `<div class="confirm-box"><span>Supprimer cette entrée ?</span>
        <button class="btn-yes" onclick="delEntry('${e.id}')">Oui</button>
@@ -539,7 +611,7 @@ function entryCard(e) {
         <span class="int-bar-bg"><span class="int-bar-fill" style="width:${(e.intensite/10)*100}%;background:${col};display:block"></span></span>
         &nbsp;<span style="font-size:13px;font-weight:700;color:${col}">${e.intensite}/10</span>
       </div>
-      ${note}${actions}</div>`;
+      ${note}${reeval}${actions}</div>`;
   }
   return `<div class="entry ${open?'open':''}" style="border-left-color:${col}" onclick="toggle('${e.id}')">
     ${e.eventDate ? `<div class="ev-date">📅 ${ehtml(fmt(e.eventDate))}</div>` : ''}
@@ -648,12 +720,20 @@ async function exportDocx(){
   const W=[3091,4159,2022,3386], TOTAL=12658;
   const BG='1a1a2e', HBG='2d2d4e', FG='f5f0eb';
 
-  const rows = S.entries.map(e => `<w:tr>
+  const rows = S.entries.map(e => {
+    const comportements = [
+      e.note,
+      e.mitigation ? `Mitigation : ${e.mitigation}` : '',
+      e.intensiteApres !== null && e.intensiteApres !== undefined
+        ? `Réévaluation : ${e.intensite}/10 → ${e.intensiteApres}/10` : '',
+    ].filter(Boolean).join('\n');
+    return `<w:tr>
     ${_wCell([e.eventDate ? fmt(e.eventDate) : '', e.situation].filter(Boolean).join('\n'), W[0])}
     ${_wCell(e.pensee, W[1])}
     ${_wCell(e.emotion + '\n' + e.intensite + '/10', W[2], {center:true})}
-    ${_wCell(e.note || '', W[3])}
-  </w:tr>`).join('');
+    ${_wCell(comportements, W[3])}
+  </w:tr>`;
+  }).join('');
 
   const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
@@ -728,7 +808,7 @@ async function exportDocx(){
 // NAVIGATION
 // ═══════════════════════════════════════════════
 function go(v) {
-  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false; S.pickerOpenSub=null;
+  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false; S.pickerOpenSub=null; S.mitigationOpen=false;
   document.getElementById('tab-list').className = 'tab'+(v==='list'?' active':'');
   document.getElementById('tab-form').className = 'tab'+(v==='form'?' active':'');
   window.scrollTo(0,0);
