@@ -448,7 +448,7 @@ function renderForm() {
 
     ${S.mitigationOpen ? `<div class="reeval-card">
       <div class="field" style="margin-bottom:18px">
-        <label>Méthode de mitigation</label>
+        <label>Méthode de mitigation / pensée alternative</label>
         <textarea id="f-mit" rows="2" placeholder="Qu'as-tu fait pour gérer cette émotion ?">${ehtml(f.mitigation)}</textarea>
       </div>
       <div class="field" style="margin-bottom:0">
@@ -588,7 +588,7 @@ function entryCard(e) {
       : `<span class="delta-badge" style="background:#f5f0eb;color:#888">= stable</span>`;
     const reeval = e.intensiteApres !== null && e.intensiteApres !== undefined ? `
       <div style="margin-bottom:14px">
-        <div class="sec-label">Réévaluation après mitigation</div>
+        <div class="sec-label">Réévaluation après mitigation / Pensée alternative</div>
         ${e.mitigation && e.mitigation.trim() ? `<div class="sec-text" style="margin-bottom:8px">${ehtml(e.mitigation)}</div>` : ''}
         <div>
           <span style="font-size:12px;color:#888;margin-right:6px">Avant</span>
@@ -599,7 +599,7 @@ function entryCard(e) {
           <span style="font-size:12px;font-weight:700;color:${col};margin-left:4px">${e.intensiteApres}/10</span>
           ${deltaLabel}
         </div>
-      </div>` : (e.mitigation && e.mitigation.trim() ? `<div style="margin-bottom:14px"><div class="sec-label">Mitigation</div><div class="sec-text">${ehtml(e.mitigation)}</div></div>` : '');
+      </div>` : (e.mitigation && e.mitigation.trim() ? `<div style="margin-bottom:14px"><div class="sec-label">Mitigation / Pensée alternative</div><div class="sec-text">${ehtml(e.mitigation)}</div></div>` : '');
     const actions = S.confirmDel === e.id ?
       `<div class="confirm-box"><span>Supprimer cette entrée ?</span>
        <button class="btn-yes" onclick="delEntry('${e.id}')">Oui</button>
@@ -760,7 +760,7 @@ async function exportDocx(){
     ${_wCell('Situation',              W[0], {center:true, bold:true, color:FG, bg:HBG})}
     ${_wCell('Pensées automatiques', W[1], {center:true, bold:true, color:FG, bg:HBG})}
     ${_wCell('Émotions\n(X/10)', W[2], {center:true, bold:true, color:FG, bg:HBG})}
-    ${_wCell('Comportements',          W[3], {center:true, bold:true, color:FG, bg:HBG})}
+    ${_wCell('Pensée alternative',       W[3], {center:true, bold:true, color:FG, bg:HBG})}
   </w:tr>
   ${rows}
 </w:tbl>
