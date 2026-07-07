@@ -54,6 +54,15 @@ Appuie sur une carte pour la déplier et voir la pensée automatique, l'intensit
 
 ---
 
+## Modifier une entrée
+
+1. Déplie l'entrée en appuyant dessus
+2. Appuie sur **Modifier**
+3. Le formulaire s'ouvre avec tous les champs pré-remplis — modifie ce que tu veux
+4. Appuie sur **Modifier l'entrée** pour sauvegarder, ou **Annuler** pour revenir sans changer
+
+---
+
 ## Supprimer une entrée
 
 1. Déplie l'entrée en appuyant dessus
@@ -79,7 +88,7 @@ Tes entrées sont stockées localement dans le navigateur. Pour les conserver ou
 
 **Exporter JSON** : appuie sur **⬇ Exporter JSON** depuis l'onglet Entrées. Sur mobile, la feuille de partage native s'ouvre (iCloud, Google Drive, e-mail…). Sur ordinateur, un fichier `.json` est téléchargé.
 
-**Exporter Word** : appuie sur **⬇ Exporter Word** pour générer un tableau `.docx` au format de la grille TCC (Situation · Pensées automatiques · Émotions · Comportements), compatible Word et LibreOffice.
+**Exporter Word** : appuie sur **⬇ Exporter Word** pour générer un tableau `.docx` au format de la grille TCC (Situation · Pensées automatiques · Émotions · Pensée alternative), compatible Word et LibreOffice.
 
 **Importer** : appuie sur **⬆ Importer JSON** et sélectionne un fichier exporté précédemment. Les entrées déjà présentes ne sont pas dupliquées.
 
