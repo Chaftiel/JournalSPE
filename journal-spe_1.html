@@ -39,7 +39,8 @@
     .btn-submit { width: 100%; padding: 14px; background: #1a1a2e; color: #f5f0eb; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 8px; touch-action: manipulation; }
     .btn-submit:disabled { opacity: 0.35; cursor: default; }
     .btn-action { flex: 1; padding: 10px; border-radius: 8px; border: 1.5px solid #e5e0da; background: #fff; color: #1a1a2e; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; touch-action: manipulation; }
-    .btn-del { margin-top: 12px; background: none; border: 1px solid #f0cece; color: #c0392b; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .btn-del  { background: none; border: 1px solid #f0cece; color: #c0392b; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .btn-edit { background: none; border: 1px solid #c0cce0; color: #1a6abf; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
     .btn-yes { background: #c0392b; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
     .btn-no  { background: none; border: 1px solid #e0ddd8; color: #6a6a6a; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
 
@@ -182,7 +183,7 @@ const EMOTIONS = [
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
-const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical', pickerOpenSub:null, mitigationOpen:false };
+const S = { view:'list', entries:[], form:null, expanded:null, confirmDel:null, confirmClear:false, pickerMode:'vertical', pickerOpenSub:null, mitigationOpen:false, editId:null };
 
 // ═══════════════════════════════════════════════
 // SVG WHEEL BUILDER
@@ -463,7 +464,8 @@ function renderForm() {
     </div>` : ''}
 
     <div style="padding:0 0 4px">
-      <button class="btn-submit" id="f-btn" onclick="submitForm()" ${ok?'':'disabled'}>Enregistrer</button>
+      <button class="btn-submit" id="f-btn" onclick="submitForm()" ${ok?'':'disabled'}>${S.editId ? 'Modifier l\'entrée' : 'Enregistrer'}</button>
+      ${S.editId ? `<button type="button" style="width:100%;margin-top:8px;padding:10px;background:none;border:1px solid #e0ddd8;border-radius:8px;color:#888;font-size:13px;cursor:pointer;font-family:inherit" onclick="go('list')">Annuler</button>` : ''}
     </div>`;
 
   if (S.pickerMode === 'wheel') bindWheelClicks();
@@ -522,7 +524,20 @@ function submitForm() {
   snapForm();
   const f = S.form;
   if (!f.situation.trim() || !f.pensee.trim() || !f.emotion) return;
-  S.entries.unshift({ id:Date.now().toString(), date:new Date().toISOString(), eventDate:f.eventDate, situation:f.situation, pensee:f.pensee, emotion:f.emotion, intensite:f.intensite, note:f.note, mitigation:f.mitigation||'', intensiteApres:S.mitigationOpen ? f.intensiteApres : null });
+  if (S.editId) {
+    const idx = S.entries.findIndex(e => e.id === S.editId);
+    if (idx !== -1) {
+      S.entries[idx] = Object.assign({}, S.entries[idx], {
+        eventDate: f.eventDate, situation: f.situation, pensee: f.pensee,
+        emotion: f.emotion, intensite: f.intensite, note: f.note,
+        mitigation: f.mitigation || '',
+        intensiteApres: S.mitigationOpen ? f.intensiteApres : null
+      });
+    }
+    S.editId = null;
+  } else {
+    S.entries.unshift({ id:Date.now().toString(), date:new Date().toISOString(), eventDate:f.eventDate, situation:f.situation, pensee:f.pensee, emotion:f.emotion, intensite:f.intensite, note:f.note, mitigation:f.mitigation||'', intensiteApres:S.mitigationOpen ? f.intensiteApres : null });
+  }
   save();
   go('list');
 }
@@ -604,7 +619,10 @@ function entryCard(e) {
       `<div class="confirm-box"><span>Supprimer cette entrée ?</span>
        <button class="btn-yes" onclick="delEntry('${e.id}')">Oui</button>
        <button class="btn-no"  onclick="cancelDel()">Annuler</button></div>` :
-      `<button class="btn-del" onclick="askDel('${e.id}')">Supprimer</button>`;
+      `<div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-edit" onclick="editEntry('${e.id}')">Modifier</button>
+        <button class="btn-del"  onclick="askDel('${e.id}')">Supprimer</button>
+       </div>`;
     inner = `<div class="expanded-sec" onclick="event.stopPropagation()">
       <div style="margin-bottom:14px"><div class="sec-label">Pensée</div><div class="sec-text">${ehtml(e.pensee)}</div></div>
       <div style="margin-bottom:14px"><div class="sec-label">Intensité</div>
@@ -629,6 +647,30 @@ function delEntry(id)    { S.entries = S.entries.filter(e=>e.id!==id); save(); S
 function askClearAll()   { S.confirmClear = true; S.expanded=null; S.confirmDel=null; renderList(); }
 function cancelClearAll(){ S.confirmClear = false; renderList(); }
 function clearAll()      { S.entries = []; save(); S.confirmClear = false; renderList(); }
+
+function editEntry(id) {
+  const e = S.entries.find(x => x.id === id);
+  if (!e) return;
+  S.form = {
+    eventDate: e.eventDate || nowLocal(),
+    situation: e.situation || '',
+    pensee: e.pensee || '',
+    emotion: e.emotion || '',
+    intensite: e.intensite || 5,
+    note: e.note || '',
+    mitigation: e.mitigation || '',
+    intensiteApres: e.intensiteApres !== undefined ? e.intensiteApres : null
+  };
+  S.editId = id;
+  S.expanded = null; S.confirmDel = null; S.confirmClear = false;
+  S.pickerOpenSub = null;
+  S.mitigationOpen = e.intensiteApres !== null && e.intensiteApres !== undefined;
+  S.view = 'form';
+  document.getElementById('tab-list').className = 'tab';
+  document.getElementById('tab-form').className = 'tab active';
+  window.scrollTo(0, 0);
+  renderForm();
+}
 
 // ═══════════════════════════════════════════════
 // JSON EXPORT / IMPORT
@@ -808,7 +850,7 @@ async function exportDocx(){
 // NAVIGATION
 // ═══════════════════════════════════════════════
 function go(v) {
-  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false; S.pickerOpenSub=null; S.mitigationOpen=false;
+  S.view=v; S.expanded=null; S.confirmDel=null; S.confirmClear=false; S.pickerOpenSub=null; S.mitigationOpen=false; S.editId=null;
   document.getElementById('tab-list').className = 'tab'+(v==='list'?' active':'');
   document.getElementById('tab-form').className = 'tab'+(v==='form'?' active':'');
   window.scrollTo(0,0);
