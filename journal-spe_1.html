@@ -762,7 +762,8 @@ async function exportDocx(){
   const W=[3091,4159,2022,3386], TOTAL=12658;
   const BG='1a1a2e', HBG='2d2d4e', FG='f5f0eb';
 
-  const rows = S.entries.map(e => {
+  const sortKey = e => new Date(e.eventDate || e.date).getTime() || 0;
+  const rows = [...S.entries].sort((a,b) => sortKey(a) - sortKey(b)).map(e => {
     const comportements = [
       e.note,
       e.mitigation ? `Mitigation : ${e.mitigation}` : '',
